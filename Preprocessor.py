@@ -65,15 +65,17 @@ class Preprocessor():
         spectrogram = self.processor_version2.process(signal)
         return spectrogram
 
-    def process(self, file_path):
-        signal, self.sample_rate = librosa.load(
-            file_path, sr=self.sample_rate, mono=True)
+    def normalize_and_trim_silence(self, signal):
+        # trim silence at beginning and end and normalize to -0.1
+        signal_normalized = librosa.util.normalize(signal, norm=100)
+        signal_normalized, index = librosa.effects.trim(
+            signal_normalized, top_db=self.silence_threshold)
+        return signal_normalized
+
+    def compute_spectrogram(self, signal):
 
         if(self.preprocessing):
-            signal = librosa.util.normalize(signal, norm=100)
-            # trim silence at beginning and end and normalize to -0.1
-            signal, index = librosa.effects.trim(
-                signal, top_db=self.silence_threshold)
+            signal = self.normalize_and_trim_silence(signal)
 
         if(self.version == 1):
             spectrogram = self.__processV1(

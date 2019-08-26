@@ -2,6 +2,7 @@ import os
 import glob
 import argparse
 from tqdm import tqdm
+import librosa
 from Preprocessor import *
 
 if __name__ == "__main__":
@@ -27,4 +28,6 @@ if __name__ == "__main__":
     preprocessor = Preprocessor(spectrogram_path=args.spec_path, version=args.spec_version,
                                 test=args.test, dump=args.dump, preprocessing=(not args.no_preprocessing))
     for file in tqdm(file_list):
-        preprocessor.process(file)
+        signal, sample_rate = librosa.load(
+            file, sr=32000, mono=True)
+        preprocessor.compute_spectrogram(signal)
