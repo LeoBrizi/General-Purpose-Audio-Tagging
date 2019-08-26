@@ -16,13 +16,13 @@ do
    esac
 done
 
-spectrogramDirV1=./spec/ver1/
-spectrogramDirV2=./spec/ver2/
 dataSetDir=./dataset
-echo "creating directories for spectrograms"
-mkdir -p $spectrogramDirV1 $spectrogramDirV2
+spectrogramDirV1=./dataset/spec/ver1/
+spectrogramDirV2=./dataset/spec/ver2/
 echo "creating directory for data set"
 mkdir -p $dataSetDir
+echo "creating directories for spectrograms"
+mkdir -p $spectrogramDirV1 $spectrogramDirV2
 if [ "$dataSetZipFile" != "" ]
 then
 	echo "unzip the dataset inside dataset directory..."
