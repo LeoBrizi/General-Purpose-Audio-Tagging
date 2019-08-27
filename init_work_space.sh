@@ -19,10 +19,15 @@ done
 dataSetDir=./dataset
 spectrogramDirV1=./dataset/spec/ver1/
 spectrogramDirV2=./dataset/spec/ver2/
+dataAugmentDir=./dataset/aug/
+specV1AugmentDir=./dataset/aug/spec/ver1/
+specV2AugmentDir=./dataset/aug/spec/ver2/
 echo "creating directory for data set"
 mkdir -p $dataSetDir
 echo "creating directories for spectrograms"
 mkdir -p $spectrogramDirV1 $spectrogramDirV2
+echo "creating directory for augmented data"
+mkdir -p $dataAugmentDir $specV1AugmentDir $specV2AugmentDir
 if [ "$dataSetZipFile" != "" ]
 then
 	echo "unzip the dataset inside dataset directory..."

@@ -12,9 +12,10 @@ class Loader():
 
         self.classes_frequency = {}
         self.spec_statistic = {"max": None,
-                               "min": None, "average": 0, "variance": 0}
+                               "min": None, "average": 0, "variance": 0, "len_hist": {}}
         self.audio_statistics = {"max": None,
-                                 "min": None, "average": 0, "variance": 0}
+                                 "min": None, "average": 0, "variance": 0, "len_hist": {}}
+        self.classes_verified = {}
         self.files = []
         self.labels = []
         self.verified = []
@@ -44,6 +45,7 @@ class Loader():
                 file_verified = split_line[2].strip()
                 self.verified.append(np.bool(file_verified == '1'))
             else:
+                file_verified = True
                 self.verified.append(np.bool(True))
 
             self.files.append(file_name)
@@ -51,8 +53,12 @@ class Loader():
             self.class_id_mapping.setdefault(
                 file_label, len(self.class_id_mapping.keys()))
             self.labels.append(self.class_id_mapping[file_label])
+
             self.classes_frequency[file_label]
                 = self.classes_frequency.setdefault(file_label, 0) + 1
+            if(file_verified):
+                self.classes_verified[file_label]
+                    = self.classes_verified.setdefault(file_label, 0) + 1
 
         print("finish loading csv")
         return np.asarray(self.files, dtype=np.string_), np.asarray(self.labels, dtype=np.int32)
@@ -103,13 +109,15 @@ class Loader():
                 "average"] + delta
             self.spec_statistic["variance"] = ((k - 1) * self.spec_statistic["variance"]) / k +
                 delta * (Xk - self.spec_statistic["average"])
+            self.spec_statistic["len_hist"][k] = self.spec_statistic[
+                "len_hist"].setdefault(k, 0) + 1
 
         return np.asarray(self.spectrograms), np.asarray(self.labels, dtype=np.int32)
 
     def load_audio_signal(self):
-        preprocessor = Preprocessor()
         if(len(self.files) == 0):
             raise NameError("load the file name list before from csv file")
+        preprocessor = Preprocessor()
         if(self.train_csv):
             audio_path = "./dataset/audio_train/"
         else:
@@ -134,25 +142,30 @@ class Loader():
                 "average"] + delta
             self.audio_statistic["variance"] = ((k - 1) * self.audio_statistic["variance"]) / k +
                 delta * (Xk - self.audio_statistic["average"])
+            self.audio_statistic["len_hist"][k] = self.audio_statistic["len_hist"].setdefault(k, 0) + 1
 
         return np.asarray(self.audio_signals), np.asarray(self.labels, dtype=np.int32)
 
     # with default parameters select all
-    def select_spectrogram(self, only_verified=False, classes=[]):
+    def select_spectrogram(self, verified=False, classes=[]):
+        if(len(self.spectrograms) == 0):
+            raise NameError("load spectrograms list before")
         subset_spec = []
         subset_label = []
         for index in range(0, len(self.spectrograms)):
-            if(not only_verified or (only_verified and self.verified[index])):
+            if(verified == self.verified[index]):
                 if(classes == [] or self.labels[index] in classes):
                     subset_spec.append(self.spectrograms[index])
                     subset_label.appen(self.labels[index])
         return np.asarray(subset_spec), np.asarray(subset_label, dtype=np.int32)
 
-    def select_audio_signal(self, only_verified=False, classes=[]):
+    def select_audio_signal(self, verified=False, classes=[]):
+        if(len(self.audio_signals) == 0):
+            raise NameError("load audio signals list before")
         subset_audio = []
         subset_label = []
         for index in range(0, len(self.audio_signals)):
-            if(not only_verified or (only_verified and self.verified[index])):
+            if(verified == self.verified[index]):
                 if(classes == [] or self.labels[index] in classes):
                     subset_audio.append(self.audio_signals[index])
                     subset_label.append(self.labels[index])
@@ -167,10 +180,13 @@ class Loader():
     def get_general_statistics(self):
         tot = len(self.labels)
         classes_percent = {}
+        classes_percent_verified = {}
         for key in self.classes_frequency.key():
             classes_percent[key] = self.classes_frequency[key] / tot
+            classes_percent_verified[key] = self.classes_verified[
+                key] / self.classes_frequency[key]
         verif_num = self.verified.count(True)
-        return self.classes_frequency, verif_num, classes_percent, verif_num / tot
+        return self.classes_frequency, classes_percent, verif_num, verif_num / tot, self.classes_verified, classes_percent_verified
 
     def get_audio_statistics(self):
         return self.audio_statistic
@@ -212,5 +228,3 @@ class Loader():
                 class_dict["variance"] = ((k - 1) * class_dict["variance"]) / k +
                     delta * (Xk - class_dict["average"])
         return class_dict
-
-    def show_statistics(self):
