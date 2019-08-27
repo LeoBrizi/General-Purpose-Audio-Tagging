@@ -109,8 +109,8 @@ class Loader():
                 "average"] + delta
             self.spec_statistic["variance"] = ((k - 1) * self.spec_statistic["variance"]) / k +
                 delta * (Xk - self.spec_statistic["average"])
-            self.spec_statistic["len_hist"][k] = self.spec_statistic[
-                "len_hist"].setdefault(k, 0) + 1
+            self.spec_statistic["len_hist"][Xk] = self.spec_statistic[
+                "len_hist"].setdefault(Xk, 0) + 1
 
         return np.asarray(self.spectrograms), np.asarray(self.labels, dtype=np.int32)
 
@@ -142,7 +142,7 @@ class Loader():
                 "average"] + delta
             self.audio_statistic["variance"] = ((k - 1) * self.audio_statistic["variance"]) / k +
                 delta * (Xk - self.audio_statistic["average"])
-            self.audio_statistic["len_hist"][k] = self.audio_statistic["len_hist"].setdefault(k, 0) + 1
+            self.audio_statistic["len_hist"][Xk] = self.audio_statistic["len_hist"].setdefault(Xk, 0) + 1
 
         return np.asarray(self.audio_signals), np.asarray(self.labels, dtype=np.int32)
 
@@ -196,7 +196,7 @@ class Loader():
 
     # c as number
     def get_audio_statistics_for_class(self, c):
-        class_dict = {"max": None, "min": None, "average": 0, "variance": 0}
+        class_dict = {"max": None, "min": None, "average": 0, "variance": 0, "len_hist":{}}
         for index in range(0, len(self.audio_signals)):
             if(self.labels[index] == c):
                 Xk = len(self.audio_signals[index])
@@ -210,13 +210,14 @@ class Loader():
                     "average"] + delta
                 class_dict["variance"] = ((k - 1) * class_dict["variance"]) / k +
                     delta * (Xk - class_dict["average"])
+                class_dict["len_hist"][Xk] = class_dict["len_hist"].setdefault(Xk, 0) + 1
         return class_dict
 
     def get_spec_statistics_for_class(self, c):
-        class_dict = {"max": None, "min": None, "average": 0, "variance": 0}
+        class_dict = {"max": None, "min": None, "average": 0, "variance": 0, "len_hist":{}}
         for index in range(0, len(self.spectrograms)):
             if(self.labels[index] == c):
-                Xk = len(self.spectrograms[index])
+                Xk = len(self.spectrograms[index].shape[1])
                 if(class_dict["max"] == None or Xk > class_dict["max"]):
                     class_dict["max"] = Xk
                 if(class_dict["min"] == None or Xk < class_dict["min"]):
@@ -227,4 +228,5 @@ class Loader():
                     "average"] + delta
                 class_dict["variance"] = ((k - 1) * class_dict["variance"]) / k +
                     delta * (Xk - class_dict["average"])
+                class_dict["len_hist"][Xk] = class_dict["len_hist"].setdefault(Xk, 0) + 1
         return class_dict
