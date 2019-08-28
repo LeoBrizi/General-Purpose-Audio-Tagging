@@ -30,4 +30,8 @@ if __name__ == "__main__":
     for file in tqdm(file_list):
         signal, sample_rate = librosa.load(
             file, sr=32000, mono=True)
-        preprocessor.compute_spectrogram(signal)
+        if(args.dump):
+            preprocessor.compute_spectrogram(
+                signal, os.path.basename(file).replace(".wav", ".npy"))
+        else:
+            preprocessor.compute_spectrogram(signal)

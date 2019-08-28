@@ -1,5 +1,5 @@
 import os
-import tqdm
+from tqdm import tqdm
 import numpy as np
 import librosa
 from Preprocessor import *
@@ -7,7 +7,7 @@ from Preprocessor import *
 
 class Loader():
 
-    def __init__(self):
+    def __init__(self, sample_rate=32000):
         self.class_id_mapping = {}
 
         self.classes_frequency = {}
@@ -24,6 +24,7 @@ class Loader():
         self.audio_signals = []
 
         self.train_csv = False
+        self.sample_rate = 32000
 
     def load_files_labels(self, file_csv):
         with open(file_csv, 'r') as fp:
@@ -54,11 +55,11 @@ class Loader():
                 file_label, len(self.class_id_mapping.keys()))
             self.labels.append(self.class_id_mapping[file_label])
 
-            self.classes_frequency[file_label]
-                = self.classes_frequency.setdefault(file_label, 0) + 1
+            self.classes_frequency[
+                file_label] = self.classes_frequency.setdefault(file_label, 0) + 1
             if(file_verified):
-                self.classes_verified[file_label]
-                    = self.classes_verified.setdefault(file_label, 0) + 1
+                self.classes_verified[
+                    file_label] = self.classes_verified.setdefault(file_label, 0) + 1
 
         print("finish loading csv")
         return np.asarray(self.files, dtype=np.string_), np.asarray(self.labels, dtype=np.int32)
@@ -69,14 +70,11 @@ class Loader():
 
         if(version == 1):
             data_path = "./dataset/spec/ver1/"
-            preprocessor = Preprocessor(spectrogram_path=data_path, version=1,
-                                        test=False, dump=True)
         elif(version == 2):
             data_path = "./dataset/spec/ver2/"
-            preprocessor = Preprocessor(spectrogram_path=data_path, version=2,
-                                        test=False, dump=True)
-        else:
-            raise NameError("version must be 1 or 2")
+
+        preprocessor = Preprocessor(
+            spectrogram_path=data_path, version=version, test=False, dump=True)
 
         if(self.train_csv):
             audio_path = "./dataset/audio_train/"
@@ -94,8 +92,8 @@ class Loader():
                     file_name, " spectrogram not exist, compute spectrogram from the original file")
                 audio_file_name = os.path.join(audio_path, file_name)
                 signal, sample_rate = librosa.load(
-                    audio_file_name, sr=32000, mono=True)
-                spec = preprocessor.compute_spectrogram(signal)
+                    audio_file_name, sr=self.sample_rate, mono=True)
+                spec = preprocessor.compute_spectrogram(signal, spec_file_name)
             self.spectrograms.append(spec)
             # compute statistics
             Xk = len(spec.shape[1])
@@ -107,12 +105,12 @@ class Loader():
             delta = Xk - self.spec_statistic["average"] / k
             self.spec_statistic["average"] = self.spec_statistic[
                 "average"] + delta
-            self.spec_statistic["variance"] = ((k - 1) * self.spec_statistic["variance"]) / k +
-                delta * (Xk - self.spec_statistic["average"])
+            self.spec_statistic["variance"] = (
+                (k - 1) * self.spec_statistic["variance"]) / k + delta * (Xk - self.spec_statistic["average"])
             self.spec_statistic["len_hist"][Xk] = self.spec_statistic[
                 "len_hist"].setdefault(Xk, 0) + 1
 
-        return np.asarray(self.spectrograms), np.asarray(self.labels, dtype=np.int32)
+        return np.asarray(self.spectrograms, dtype=np.float64), np.asarray(self.labels, dtype=np.int32)
 
     def load_audio_signal(self):
         if(len(self.files) == 0):
@@ -127,24 +125,25 @@ class Loader():
         for file_name in tqdm(self.files):
             audio_file_name = os.path.join(audio_path, file_name)
             signal, sample_rate = librosa.load(
-                audio_file_name, sr=32000, mono=True)
+                audio_file_name, sr=self.sample_rate, mono=True)
             signal = preprocessor.normalize_and_trim_silence(signal)
             self.audio_signals.append(signal)
             # compute statistics
             Xk = len(signal)
-            if(self.audio_statistic["max"] == None or Xk > self.audio_statistic["max"]):
-                self.audio_statistic["max"] = Xk
-            if(self.audio_statistic["min"] == None or Xk < self.audio_statistic["min"]):
-                self.audio_statistic["min"] = Xk
+            if(self.audio_statistics["max"] == None or Xk > self.audio_statistics["max"]):
+                self.audio_statistics["max"] = Xk
+            if(self.audio_statistics["min"] == None or Xk < self.audio_statistics["min"]):
+                self.audio_statistics["min"] = Xk
             k = len(self.audio_signals)
-            delta = Xk - self.audio_statistic["average"] / k
-            self.audio_statistic["average"] = self.audio_statistic[
+            delta = Xk - self.audio_statistics["average"] / k
+            self.audio_statistics["average"] = self.audio_statistics[
                 "average"] + delta
-            self.audio_statistic["variance"] = ((k - 1) * self.audio_statistic["variance"]) / k +
-                delta * (Xk - self.audio_statistic["average"])
-            self.audio_statistic["len_hist"][Xk] = self.audio_statistic["len_hist"].setdefault(Xk, 0) + 1
+            self.audio_statistics["variance"] = (
+                (k - 1) * self.audio_statistics["variance"]) / k + delta * (Xk - self.audio_statistics["average"])
+            self.audio_statistics["len_hist"][Xk] = self.audio_statistics[
+                "len_hist"].setdefault(Xk, 0) + 1
 
-        return np.asarray(self.audio_signals), np.asarray(self.labels, dtype=np.int32)
+        return np.asarray(self.audio_signals, dtype=np.float64), np.asarray(self.labels, dtype=np.int32)
 
     # with default parameters select all
     def select_spectrogram(self, verified=False, classes=[]):
@@ -157,7 +156,7 @@ class Loader():
                 if(classes == [] or self.labels[index] in classes):
                     subset_spec.append(self.spectrograms[index])
                     subset_label.appen(self.labels[index])
-        return np.asarray(subset_spec), np.asarray(subset_label, dtype=np.int32)
+        return np.asarray(subset_spec, dtype=np.float64), np.asarray(subset_label, dtype=np.int32)
 
     def select_audio_signal(self, verified=False, classes=[]):
         if(len(self.audio_signals) == 0):
@@ -169,7 +168,7 @@ class Loader():
                 if(classes == [] or self.labels[index] in classes):
                     subset_audio.append(self.audio_signals[index])
                     subset_label.append(self.labels[index])
-        return np.asarray(subset_audio), np.asarray(subset_label, dtype=np.int32)
+        return np.asarray(subset_audio, dtype=np.float64), np.asarray(subset_label, dtype=np.int32)
 
     def get_label_id_mapping(self):
         return self.class_id_mapping
@@ -189,14 +188,15 @@ class Loader():
         return self.classes_frequency, classes_percent, verif_num, verif_num / tot, self.classes_verified, classes_percent_verified
 
     def get_audio_statistics(self):
-        return self.audio_statistic
+        return self.audio_statistics
 
     def get_spectrogram_statistics(self):
         return self.spec_statistic
 
     # c as number
     def get_audio_statistics_for_class(self, c):
-        class_dict = {"max": None, "min": None, "average": 0, "variance": 0, "len_hist":{}}
+        class_dict = {"max": None, "min": None,
+                      "average": 0, "variance": 0, "len_hist": {}}
         for index in range(0, len(self.audio_signals)):
             if(self.labels[index] == c):
                 Xk = len(self.audio_signals[index])
@@ -208,13 +208,15 @@ class Loader():
                 delta = Xk - class_dict["average"] / k
                 class_dict["average"] = class_dict[
                     "average"] + delta
-                class_dict["variance"] = ((k - 1) * class_dict["variance"]) / k +
-                    delta * (Xk - class_dict["average"])
-                class_dict["len_hist"][Xk] = class_dict["len_hist"].setdefault(Xk, 0) + 1
+                class_dict["variance"] = (
+                    (k - 1) * class_dict["variance"]) / k + delta * (Xk - class_dict["average"])
+                class_dict["len_hist"][Xk] = class_dict[
+                    "len_hist"].setdefault(Xk, 0) + 1
         return class_dict
 
     def get_spec_statistics_for_class(self, c):
-        class_dict = {"max": None, "min": None, "average": 0, "variance": 0, "len_hist":{}}
+        class_dict = {"max": None, "min": None,
+                      "average": 0, "variance": 0, "len_hist": {}}
         for index in range(0, len(self.spectrograms)):
             if(self.labels[index] == c):
                 Xk = len(self.spectrograms[index].shape[1])
@@ -226,7 +228,8 @@ class Loader():
                 delta = Xk - class_dict["average"] / k
                 class_dict["average"] = class_dict[
                     "average"] + delta
-                class_dict["variance"] = ((k - 1) * class_dict["variance"]) / k +
-                    delta * (Xk - class_dict["average"])
-                class_dict["len_hist"][Xk] = class_dict["len_hist"].setdefault(Xk, 0) + 1
+                class_dict["variance"] = (
+                    (k - 1) * class_dict["variance"]) / k + delta * (Xk - class_dict["average"])
+                class_dict["len_hist"][Xk] = class_dict[
+                    "len_hist"].setdefault(Xk, 0) + 1
         return class_dict
