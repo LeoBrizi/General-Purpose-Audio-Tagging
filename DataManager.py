@@ -31,7 +31,82 @@ class DataManager():
 
         return new_data
 
-    def audio_signals_augmentation(self, class_to_augment, many):
+    @staticmethod
+    def change_pitch_and_speed(orig_audio_sig):
+        y_pitch_speed = orig_audio_sig.copy()
+        length_change = np.random.uniform(low=0.8, high=1)
+        speed_fac = 1.0 / length_change
+        tmp = np.interp(np.arange(0, len(y_pitch_speed), speed_fac), np.arange(
+            0, len(y_pitch_speed)), y_pitch_speed)
+        min_len = min(y_pitch_speed.shape[0], tmp.shape[0])
+        y_pitch_speed *= 0
+        y_pitch_speed[0:min_len] = tmp[0:min_len]
+        return y_pitch_speed
+
+    @staticmethod
+    def change_pitch(orig_audio_sig):
+        y_pitch = orig_audio_sig.copy()
+        bins_per_octave = 12
+        pitch_pm = 2
+        pitch_change = pitch_pm * 2 * (np.random.uniform())
+        y_pitch = librosa.effects.pitch_shift(y_pitch.astype(
+            'float64'), loader.sample_rate, n_steps=pitch_change, bins_per_octave=bins_per_octave)
+        return y_pitch
+
+    @staticmethod
+    def change_speed(orig_audio_sig):
+        y_speed = orig_audio_sig.copy()
+        speed_change = np.random.uniform(low=0.9, high=1.1)
+        tmp = librosa.effects.time_stretch(
+            y_speed.astype('float64'), speed_change)
+        minlen = min(y_speed.shape[0], tmp.shape[0])
+        y_speed *= 0
+        y_speed[0:minlen] = tmp[0:minlen]
+        return y_speed
+
+    @staticmethod
+    def value_augmentation(orig_audio_sig):
+        y_aug = orig_audio_sig.copy()
+        dyn_change = np.random.uniform(low=1.5, high=3)
+        y_aug = y_aug * dyn_change
+        return y_aug
+
+    @staticmethod
+    def add_distribution_noise(orig_audio_sig):
+        y_noise = orig_audio_sig.copy()
+        noise_amp = 0.005 * np.random.uniform() * np.amax(y_noise)
+        y_noise = y_noise.astype(
+            'float64') + noise_amp * np.random.normal(size=y_noise.shape[0])
+        return y_noise
+
+    @staticmethod
+    def random_shifting(orig_audio_sig):
+        y_shift = orig_audio_sig.copy()
+        timeshift_fac = 0.2 * 2 * \
+            (np.random.uniform() - 0.5)  # up to 20% of length
+        start = int(y_shift.shape[0] * timeshift_fac)
+        if (start > 0):
+            y_shift = np.pad(y_shift, (start, 0), mode='constant')[
+                0:y_shift.shape[0]]
+        else:
+            y_shift = np.pad(y_shift, (0, -start),
+                             mode='constant')[0:y_shift.shape[0]]
+        return y_shift
+
+    @staticmethod
+    def streching(orig_audio_sig):
+        input_length = orig_audio_sig.shape[0]
+        streching = orig_audio_sig.copy()
+        streching = librosa.effects.time_stretch(
+            streching.astype('float'), 1.1)
+        if len(streching) > input_length:
+            streching = streching[:input_length]
+        else:
+            streching = np.pad(
+                streching, (0, max(0, input_length - len(streching))), "constant")
+        return streching
+
+    def audio_signals_augmentation(self, class_to_augment, many, methods=[]):
         audio_signals_aug = []
         aug_dir = self.data_augmentation_dir + class_to_augment + "/"
         if not os.path.exists(aug_dir):
@@ -62,101 +137,66 @@ class DataManager():
         for orig_audio_sig in tqdm(original_audio):
 
             # change pitch and speed
-            y_pitch_speed = orig_audio_sig.copy()
-            length_change = np.random.uniform(low=0.8, high=1)
-            speed_fac = 1.0 / length_change
-            tmp = np.interp(np.arange(0, len(y_pitch_speed), speed_fac), np.arange(
-                0, len(y_pitch_speed)), y_pitch_speed)
-            min_len = min(y_pitch_speed.shape[0], tmp.shape[0])
-            y_pitch_speed *= 0
-            y_pitch_speed[0:min_len] = tmp[0:min_len]
-            y_pitch_speed = preprocessor.normalize_and_trim_silence(
-                y_pitch_speed)
+            if(method == [] or "pitch_speed" in methods):
+                y_pitch_speed = change_pitch_and_speed(original_audio)
+                y_pitch_speed = preprocessor.normalize_and_trim_silence(
+                    y_pitch_speed)
+                audio_signals_aug.append(y_pitch_speed)
+                librosa.output.write_wav(
+                    aug_dir + str(name) + "_p_s.wav", y_pitch_speed, loader.sample_rate)
 
             # change pitch only
-            y_pitch = orig_audio_sig.copy()
-            bins_per_octave = 12
-            pitch_pm = 2
-            pitch_change = pitch_pm * 2 * (np.random.uniform())
-            y_pitch = librosa.effects.pitch_shift(y_pitch.astype(
-                'float64'), loader.sample_rate, n_steps=pitch_change, bins_per_octave=bins_per_octave)
-            y_pitch = preprocessor.normalize_and_trim_silence(y_pitch)
+            if(method == [] or "pitch" in methods):
+                y_pitch = change_pitch(original_audio)
+                y_pitch = preprocessor.normalize_and_trim_silence(y_pitch)
+                audio_signals_aug.append(y_pitch)
+                librosa.output.write_wav(
+                    aug_dir + str(name) + "_p.wav", y_pitch, loader.sample_rate)
 
             # change speed only
-            y_speed = orig_audio_sig.copy()
-            speed_change = np.random.uniform(low=0.9, high=1.1)
-            tmp = librosa.effects.time_stretch(
-                y_speed.astype('float64'), speed_change)
-            minlen = min(y_speed.shape[0], tmp.shape[0])
-            y_speed *= 0
-            y_speed[0:minlen] = tmp[0:minlen]
-            y_speed = preprocessor.normalize_and_trim_silence(y_speed)
+            if(method == [] or "speed" in methods):
+                y_speed = change_speed(original_audio)
+                y_speed = preprocessor.normalize_and_trim_silence(y_speed)
+                audio_signals_aug.append(y_speed)
+                librosa.output.write_wav(
+                    aug_dir + str(name) + "_s.wav", y_speed, loader.sample_rate)
 
             # value augmentation
-            y_aug = orig_audio_sig.copy()
-            dyn_change = np.random.uniform(low=1.5, high=3)
-            y_aug = y_aug * dyn_change
-            y_aug = preprocessor.normalize_and_trim_silence(y_aug)
+            if(method == [] or "aug" in methods):
+                y_aug = value_augmentation(original_audio)
+                y_aug = preprocessor.normalize_and_trim_silence(y_aug)
+                audio_signals_aug.append(y_aug)
+                librosa.output.write_wav(
+                    aug_dir + str(name) + "_aug.wav", y_aug, loader.sample_rate)
 
             # add distribution noise
-            y_noise = orig_audio_sig.copy()
-            noise_amp = 0.005 * np.random.uniform() * np.amax(y_noise)
-            y_noise = y_noise.astype(
-                'float64') + noise_amp * np.random.normal(size=y_noise.shape[0])
-            y_noise = preprocessor.normalize_and_trim_silence(y_noise)
+            if(method == [] or "noise" in methods):
+                y_noise = add_distribution_noise(original_audio)
+                y_noise = preprocessor.normalize_and_trim_silence(y_noise)
+                audio_signals_aug.append(y_noise)
+                librosa.output.write_wav(
+                    aug_dir + str(name) + "_noise.wav", y_noise, loader.sample_rate)
 
             # random shifting
-            y_shift = orig_audio_sig.copy()
-            timeshift_fac = 0.2 * 2 * \
-                (np.random.uniform() - 0.5)  # up to 20% of length
-            start = int(y_shift.shape[0] * timeshift_fac)
-            if (start > 0):
-                y_shift = np.pad(y_shift, (start, 0), mode='constant')[
-                    0:y_shift.shape[0]]
-            else:
-                y_shift = np.pad(y_shift, (0, -start),
-                                 mode='constant')[0:y_shift.shape[0]]
-            y_shift = preprocessor.normalize_and_trim_silence(y_shift)
+            if(method == [] or "shift" in methods):
+                y_shift = random_shifting(original_audio)
+                y_shift = preprocessor.normalize_and_trim_silence(y_shift)
+                audio_signals_aug.append(y_shift)
+                librosa.output.write_wav(
+                    aug_dir + str(name) + "_shift.wav", y_shift, loader.sample_rate)
 
             # streching
-            input_length = orig_audio_sig.shape[0]
-            streching = orig_audio_sig.copy()
-            streching = librosa.effects.time_stretch(
-                streching.astype('float'), 1.1)
-            if len(streching) > input_length:
-                streching = streching[:input_length]
-            else:
-                streching = np.pad(
-                    streching, (0, max(0, input_length - len(streching))), "constant")
-            streching = preprocessor.normalize_and_trim_silence(streching)
-
-            audio_signals_aug.append(y_pitch_speed)
-            audio_signals_aug.append(y_pitch)
-            audio_signals_aug.append(y_speed)
-            audio_signals_aug.append(y_aug)
-            audio_signals_aug.append(y_noise)
-            audio_signals_aug.append(y_shift)
-            audio_signals_aug.append(streching)
-
-            librosa.output.write_wav(
-                aug_dir + str(name) + "_p_s.wav", y_pitch_speed, loader.sample_rate)
-            librosa.output.write_wav(
-                aug_dir + str(name) + "_p.wav", y_pitch, loader.sample_rate)
-            librosa.output.write_wav(
-                aug_dir + str(name) + "_s.wav", y_speed, loader.sample_rate)
-            librosa.output.write_wav(
-                aug_dir + str(name) + "_aug.wav", y_aug, loader.sample_rate)
-            librosa.output.write_wav(
-                aug_dir + str(name) + "_noise.wav", y_noise, loader.sample_rate)
-            librosa.output.write_wav(
-                aug_dir + str(name) + "_shift.wav", y_shift, loader.sample_rate)
-            librosa.output.write_wav(
-                aug_dir + str(name) + "_str.wav", streching, loader.sample_rate)
+            if(method == [] or "strech" in methods):
+                streching = streching(original_audio)
+                streching = preprocessor.normalize_and_trim_silence(streching)
+                audio_signals_aug.append(streching)
+                librosa.output.write_wav(
+                    aug_dir + str(name) + "_str.wav", streching, loader.sample_rate)
 
             name += 1
             if(len(audio_signals_aug) >= many):
                 break
-        return np.asarray(audio_signals_aug, dtype=float64)
+        return audio_signals_aug
 
     def spectrograms_augmentation(self, class_to_augment, many, version):
         spec_aug = []
@@ -189,4 +229,4 @@ class DataManager():
             name += 1
             if(len(spec_aug) >= many):
                 break
-        return np.asarray(spec_aug, dtype=np.float64)
+        return spec_aug

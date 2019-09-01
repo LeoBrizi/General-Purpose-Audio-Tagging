@@ -43,11 +43,10 @@ class Loader():
             if(file_label == "None"):
                 continue
             if(self.train_csv):
-                file_verified = split_line[2].strip()
-                self.verified.append(np.bool(file_verified == '1'))
+                file_verified = np.bool(split_line[2].strip() == '1')
             else:
-                file_verified = True
-                self.verified.append(np.bool(True))
+                file_verified = np.bool(True)
+            self.verified.append(file_verified)
 
             self.files.append(file_name)
 
@@ -62,7 +61,7 @@ class Loader():
                     file_label] = self.classes_verified.setdefault(file_label, 0) + 1
 
         print("finish loading csv")
-        return np.asarray(self.files, dtype=np.string_), np.asarray(self.labels, dtype=np.int32)
+        return self.files, self.labels
 
     def load_spectrogram(self, version):
         if(len(self.files) == 0):
@@ -93,24 +92,24 @@ class Loader():
                 audio_file_name = os.path.join(audio_path, file_name)
                 signal, sample_rate = librosa.load(
                     audio_file_name, sr=self.sample_rate, mono=True)
-                spec = preprocessor.compute_spectrogram(signal, spec_file_name)
+                spec = preprocessor.compute_spectrogram(signal, os.path.basename(spec_file_name))
             self.spectrograms.append(spec)
             # compute statistics
-            Xk = len(spec.shape[1])
+            Xk = spec.shape[1]
             if(self.spec_statistic["max"] == None or Xk > self.spec_statistic["max"]):
                 self.spec_statistic["max"] = Xk
             if(self.spec_statistic["min"] == None or Xk < self.spec_statistic["min"]):
                 self.spec_statistic["min"] = Xk
             k = len(self.spectrograms)
-            delta = Xk - self.spec_statistic["average"] / k
+            delta = (Xk - self.spec_statistic["average"]) / k
             self.spec_statistic["average"] = self.spec_statistic[
                 "average"] + delta
-            self.spec_statistic["variance"] = (
-                (k - 1) * self.spec_statistic["variance"]) / k + delta * (Xk - self.spec_statistic["average"])
+            self.spec_statistic["variance"] = ((
+                (k - 1) * self.spec_statistic["variance"]) / k) + (delta * (Xk - self.spec_statistic["average"]))
             self.spec_statistic["len_hist"][Xk] = self.spec_statistic[
                 "len_hist"].setdefault(Xk, 0) + 1
 
-        return np.asarray(self.spectrograms, dtype=np.float64), np.asarray(self.labels, dtype=np.int32)
+        return self.spectrograms, self.labels
 
     def load_audio_signal(self):
         if(len(self.files) == 0):
@@ -135,15 +134,15 @@ class Loader():
             if(self.audio_statistics["min"] == None or Xk < self.audio_statistics["min"]):
                 self.audio_statistics["min"] = Xk
             k = len(self.audio_signals)
-            delta = Xk - self.audio_statistics["average"] / k
+            delta = (Xk - self.audio_statistics["average"]) / k
             self.audio_statistics["average"] = self.audio_statistics[
                 "average"] + delta
-            self.audio_statistics["variance"] = (
-                (k - 1) * self.audio_statistics["variance"]) / k + delta * (Xk - self.audio_statistics["average"])
+            self.audio_statistics["variance"] = ((
+                (k - 1) * self.audio_statistics["variance"]) / k) + (delta * (Xk - self.audio_statistics["average"]))
             self.audio_statistics["len_hist"][Xk] = self.audio_statistics[
                 "len_hist"].setdefault(Xk, 0) + 1
 
-        return np.asarray(self.audio_signals, dtype=np.float64), np.asarray(self.labels, dtype=np.int32)
+        return self.audio_signals, self.labels
 
     # with default parameters select all
     def select_spectrogram(self, verified=False, classes=[]):
@@ -156,7 +155,7 @@ class Loader():
                 if(classes == [] or self.labels[index] in classes):
                     subset_spec.append(self.spectrograms[index])
                     subset_label.appen(self.labels[index])
-        return np.asarray(subset_spec, dtype=np.float64), np.asarray(subset_label, dtype=np.int32)
+        return subset_spec, subset_label
 
     def select_audio_signal(self, verified=False, classes=[]):
         if(len(self.audio_signals) == 0):
@@ -168,19 +167,19 @@ class Loader():
                 if(classes == [] or self.labels[index] in classes):
                     subset_audio.append(self.audio_signals[index])
                     subset_label.append(self.labels[index])
-        return np.asarray(subset_audio, dtype=np.float64), np.asarray(subset_label, dtype=np.int32)
+        return subset_audio, subset_label
 
     def get_label_id_mapping(self):
         return self.class_id_mapping
 
     def get_label(self):
-        return self.class_id_mapping.key()
+        return self.class_id_mapping.keys()
 
     def get_general_statistics(self):
         tot = len(self.labels)
         classes_percent = {}
         classes_percent_verified = {}
-        for key in self.classes_frequency.key():
+        for key in self.classes_frequency.keys():
             classes_percent[key] = self.classes_frequency[key] / tot
             classes_percent_verified[key] = self.classes_verified[
                 key] / self.classes_frequency[key]
@@ -205,11 +204,11 @@ class Loader():
                 if(class_dict["min"] == None or Xk < class_dict["min"]):
                     class_dict["min"] = Xk
                 k = index
-                delta = Xk - class_dict["average"] / k
+                delta = (Xk - class_dict["average"]) / k
                 class_dict["average"] = class_dict[
                     "average"] + delta
-                class_dict["variance"] = (
-                    (k - 1) * class_dict["variance"]) / k + delta * (Xk - class_dict["average"])
+                class_dict["variance"] = ((
+                    (k - 1) * class_dict["variance"]) / k) + (delta * (Xk - class_dict["average"]))
                 class_dict["len_hist"][Xk] = class_dict[
                     "len_hist"].setdefault(Xk, 0) + 1
         return class_dict
@@ -219,17 +218,17 @@ class Loader():
                       "average": 0, "variance": 0, "len_hist": {}}
         for index in range(0, len(self.spectrograms)):
             if(self.labels[index] == c):
-                Xk = len(self.spectrograms[index].shape[1])
+                Xk = self.spectrograms[index].shape[1]
                 if(class_dict["max"] == None or Xk > class_dict["max"]):
                     class_dict["max"] = Xk
                 if(class_dict["min"] == None or Xk < class_dict["min"]):
                     class_dict["min"] = Xk
                 k = index
-                delta = Xk - class_dict["average"] / k
+                delta = (Xk - class_dict["average"]) / k
                 class_dict["average"] = class_dict[
                     "average"] + delta
-                class_dict["variance"] = (
-                    (k - 1) * class_dict["variance"]) / k + delta * (Xk - class_dict["average"])
+                class_dict["variance"] = ((
+                    (k - 1) * class_dict["variance"]) / k) + (delta * (Xk - class_dict["average"]))
                 class_dict["len_hist"][Xk] = class_dict[
                     "len_hist"].setdefault(Xk, 0) + 1
         return class_dict
