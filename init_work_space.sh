@@ -16,12 +16,15 @@ do
    esac
 done
 
-dataSetDir=./dataset
+modelDir=./Models/
+dataSetDir=./dataset/
 spectrogramDirV1=./dataset/spec/ver1/
 spectrogramDirV2=./dataset/spec/ver2/
 dataAugmentDir=./dataset/aug/
 specV1AugmentDir=./dataset/aug/spec/ver1/
 specV2AugmentDir=./dataset/aug/spec/ver2/
+echo "creating directory for network models"
+mkdir -p $modelDir
 echo "creating directory for data set"
 mkdir -p $dataSetDir
 echo "creating directories for spectrograms"

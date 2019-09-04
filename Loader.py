@@ -92,7 +92,8 @@ class Loader():
                 audio_file_name = os.path.join(audio_path, file_name)
                 signal, sample_rate = librosa.load(
                     audio_file_name, sr=self.sample_rate, mono=True)
-                spec = preprocessor.compute_spectrogram(signal, os.path.basename(spec_file_name))
+                spec = preprocessor.compute_spectrogram(
+                    signal, os.path.basename(spec_file_name))
             self.spectrograms.append(spec)
             # compute statistics
             Xk = spec.shape[1]

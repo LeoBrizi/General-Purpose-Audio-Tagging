@@ -32,6 +32,15 @@ class DataManager():
         return new_data
 
     @staticmethod
+    def conform_vector(vec, size, axis_to_conform):
+        import time
+        for index in range(0, len(vec)):
+            vec[index] = DataManager.conform_dim(vec[index], size, axis_to_conform)
+        print("aspetto libera memoria")
+        time.sleep(30)
+        return vec
+
+    @staticmethod
     def change_pitch_and_speed(orig_audio_sig):
         y_pitch_speed = orig_audio_sig.copy()
         length_change = np.random.uniform(low=0.8, high=1)
@@ -198,7 +207,7 @@ class DataManager():
                 break
         return audio_signals_aug
 
-    def spectrograms_augmentation(self, class_to_augment, many, version):
+    def spectrograms_augmentation(self, class_to_augment, many, version, methods):
         spec_aug = []
         if(version == 1):
             aug_dir = self.augmented_spec_v1_dir + class_to_augment + "/"
@@ -219,7 +228,7 @@ class DataManager():
         shutil.rmtree(aug_dir)
         os.makedirs(aug_dir)
         audio_signals_aug = self.audio_signals_augmentation(
-            class_to_augment, many)
+            class_to_augment, many, methods)
         print("creating new spectrograms...")
         name = 0
         for sig_aug in tqdm(audio_signals_aug):
