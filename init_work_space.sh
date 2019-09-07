@@ -5,13 +5,15 @@ helpFunction()
    echo "script to initialize the workspace"
    echo "Usage: $0 [-d data_set_zip_file]"
    echo -e "\t-d to unzip the dataset in the dataset directory"
+   echo -e "\t-m to dowload pretrained models"
    exit 1 # Exit script after printing help
 }
 
-while getopts "d:" opt
+while getopts "d:m:" opt
 do
    case "$opt" in
       d ) dataSetZipFile="$OPTARG" ;;
+	  m ) dowloadModels=true ;;
       ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
    esac
 done
@@ -44,4 +46,10 @@ then
 	echo "unziping finished."
 else
 	echo "put the data set inside $dataSetDir"
+fi
+
+if[ $dowloadModels ]
+then
+	echo "dowload pretrained models..."
+	
 fi

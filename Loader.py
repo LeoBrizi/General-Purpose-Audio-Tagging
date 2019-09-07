@@ -24,7 +24,7 @@ class Loader():
         self.audio_signals = []
 
         self.train_csv = False
-        self.sample_rate = 32000
+        self.sample_rate = sample_rate
 
     def load_files_labels(self, file_csv):
         with open(file_csv, 'r') as fp:
@@ -151,7 +151,7 @@ class Loader():
             raise NameError("load spectrograms list before")
         subset_spec = []
         subset_label = []
-        for index in range(0, len(self.spectrograms)):
+        for index in range(len(self.spectrograms)):
             if(verified == self.verified[index]):
                 if(classes == [] or self.labels[index] in classes):
                     subset_spec.append(self.spectrograms[index])
@@ -163,7 +163,7 @@ class Loader():
             raise NameError("load audio signals list before")
         subset_audio = []
         subset_label = []
-        for index in range(0, len(self.audio_signals)):
+        for index in range(len(self.audio_signals)):
             if(verified == self.verified[index]):
                 if(classes == [] or self.labels[index] in classes):
                     subset_audio.append(self.audio_signals[index])
@@ -197,7 +197,7 @@ class Loader():
     def get_audio_statistics_for_class(self, c):
         class_dict = {"max": None, "min": None,
                       "average": 0, "variance": 0, "len_hist": {}}
-        for index in range(0, len(self.audio_signals)):
+        for index in range(len(self.audio_signals)):
             if(self.labels[index] == c):
                 Xk = len(self.audio_signals[index])
                 if(class_dict["max"] == None or Xk > class_dict["max"]):
@@ -217,7 +217,7 @@ class Loader():
     def get_spec_statistics_for_class(self, c):
         class_dict = {"max": None, "min": None,
                       "average": 0, "variance": 0, "len_hist": {}}
-        for index in range(0, len(self.spectrograms)):
+        for index in range(len(self.spectrograms)):
             if(self.labels[index] == c):
                 Xk = self.spectrograms[index].shape[1]
                 if(class_dict["max"] == None or Xk > class_dict["max"]):

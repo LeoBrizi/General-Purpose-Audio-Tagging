@@ -5,6 +5,7 @@ import os
 import shutil
 from Loader import *
 from Preprocessor import *
+import random
 
 
 class DataManager():
@@ -33,12 +34,32 @@ class DataManager():
 
     @staticmethod
     def conform_vector(vec, size, axis_to_conform):
-        import time
-        for index in range(0, len(vec)):
-            vec[index] = DataManager.conform_dim(vec[index], size, axis_to_conform)
-        print("aspetto libera memoria")
-        time.sleep(30)
+        for index in range(len(vec)):
+            vec[index] = DataManager.conform_dim(
+                vec[index], size, axis_to_conform)
         return vec
+
+    @staticmethod
+    def get_prepare_random_slice(n_frames, min_frames=None):
+
+        def prepare_random_slice(X):
+
+            if min_frames is not None:
+                frames = np.random.randint(min_frames, n_frames + 1)
+            else:
+                frames = n_frames
+            # apply random cyclic shift
+            max_idx = X.shape[2] - frames
+            X_new = np.zeros(
+                (X.shape[0], X.shape[1], frames), dtype=np.float32)
+            for i in range(X.shape[0]):
+                start = np.random.randint(0, max_idx)
+                stop = start + frames
+                X_new[i] = X[i, :, start:stop]
+
+            return X_new
+
+        return prepare_random_slice
 
     @staticmethod
     def change_pitch_and_speed(orig_audio_sig):
@@ -128,7 +149,7 @@ class DataManager():
                 audio_signals_aug.append(signal)
                 if(len(audio_signals_aug) >= many):
                     break
-            return np.asarray(audio_signals_aug, dtype=float64)
+            return np.asarray(audio_signals_aug, dtype=np.float32)
 
         preprocessor = Preprocessor(None, version=1)
         shutil.rmtree(aug_dir)
@@ -205,7 +226,7 @@ class DataManager():
             name += 1
             if(len(audio_signals_aug) >= many):
                 break
-        return audio_signals_aug
+        return np.asarray(audio_signals_aug, dtype=np.float32)
 
     def spectrograms_augmentation(self, class_to_augment, many, version, methods):
         spec_aug = []
@@ -222,7 +243,7 @@ class DataManager():
                 spec_aug.append(spec)
                 if(len(spec_aug) >= many):
                     break
-            return np.asarray(spec_aug, dtype=float64)
+            return np.asarray(spec_aug, dtype=np.float32)
         preprocessor = Preprocessor(aug_dir, version=version, dump=True)
 
         shutil.rmtree(aug_dir)
@@ -238,4 +259,4 @@ class DataManager():
             name += 1
             if(len(spec_aug) >= many):
                 break
-        return spec_aug
+        return np.asarray(spec_aug, dtype=np.float32)

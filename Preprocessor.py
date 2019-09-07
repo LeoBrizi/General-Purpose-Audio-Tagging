@@ -15,12 +15,6 @@ class Preprocessor():
     def __init__(self, spectrogram_path=None, version=1, test=False, dump=False, preprocessing=True, sample_rate=32000, silence_threshold=40):
         if(version != 1 and version != 2):
             raise NameError("version must be 1 or 2")
-        if(dump and spectrogram_path == None):
-            raise NameError(
-                "if you want to dump the spectrograms, You have to specifie a directory where store dumps")
-        if(dump):
-            if not os.path.exists(spectrogram_path):
-                os.makedirs(spectrogram_path)
         self.version = version
         self.spectrogram_path = spectrogram_path
         self.sample_rate = sample_rate
@@ -101,7 +95,15 @@ class Preprocessor():
 
         if self.dump:
             # save spectrograms
+            if not os.path.exists(spectrogram_path):
+                os.makedirs(spectrogram_path)
             spec_file = os.path.join(self.spectrogram_path, file_name)
             np.save(spec_file, spectrogram)
 
         return spectrogram
+
+    def set_version(self, version):
+        self.version = version
+
+    def set_spectrogram_path(self, spectrogram_path):
+        self.spectrogram_path = spectrogram_path
