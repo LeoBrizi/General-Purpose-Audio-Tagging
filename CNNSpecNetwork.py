@@ -15,7 +15,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 class CNNSpecNetwork():
 
-    def __init__(self, n_frames, spec_bins=128, num_of_classes=41, num_filters=48):
+    def __init__(self, n_frames=384, spec_bins=128, num_of_classes=41, num_filters=48):
         init_conv = KI.he_normal(seed=None)
         activation_conv = KA.relu
         self.n_frames = n_frames
@@ -133,13 +133,13 @@ class CNNSpecNetwork():
 
         if(validation_split != 0):
             self.use_validation_set = True
-
+        '''
         def scheduler(epoch):
             return learning_rate
 
         learning_rate_callback = KC.LearningRateScheduler(scheduler)
         callbacks.append(learning_rate_callback)
-
+		'''
         logdir = "Models/" + model_name + "/" + datetime.now().strftime("%Y%m%d-%H%M%S")
         if not os.path.exists(logdir):
             os.makedirs(logdir)
@@ -174,6 +174,7 @@ class CNNSpecNetwork():
     def print_history(self, model_name, history):
         import matplotlib.pyplot as plt
         self.history = history
+        plt.close()
         plt.plot(history['acc'])
         plt.title('model accuracy')
         plt.ylabel('accuracy')
@@ -182,7 +183,7 @@ class CNNSpecNetwork():
         plt.xlabel('epoch')
         plt.legend(['train', 'test'], loc='upper left')
         plt.savefig("Models/" + model_name + "_acc.png")
-        plt.close()
+        plt.show()
         # summarize history for loss
         plt.plot(history['loss'])
         if self.use_validation_set:
@@ -192,7 +193,8 @@ class CNNSpecNetwork():
         plt.xlabel('epoch')
         plt.legend(['train', 'test'], loc='upper left')
         plt.savefig("Models/" + model_name + "_loss.png")
-        plt.close()
+        plt.show()
+
 
     def save_history(self, model_name, history):
         import json

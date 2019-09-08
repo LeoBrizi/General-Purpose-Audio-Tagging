@@ -9,7 +9,8 @@ from DataManager import *
 class DataLoader():
 
     def __init__(self, sample_rate=32000, dim_to_conform=3000):
-        self.class_id_mapping = {}
+        self.class_id_mapping = {'Hi-hat': 0, 'Saxophone': 1, 'Trumpet': 2, 'Glockenspiel': 3, 'Cello': 4, 'Knock': 5, 'Gunshot_or_gunfire': 6, 'Clarinet': 7, 'Computer_keyboard': 8, 'Keys_jangling': 9, 'Snare_drum': 10, 'Writing': 11, 'Laughter': 12, 'Tearing': 13, 'Fart': 14, 'Oboe': 15, 'Flute': 16, 'Cough': 17, 'Telephone': 18, 'Bark': 19, 'Chime': 20, 'Bass_drum': 21,
+                                 'Bus': 22, 'Squeak': 23, 'Scissors': 24, 'Harmonica': 25, 'Gong': 26, 'Microwave_oven': 27, 'Burping_or_eructation': 28, 'Double_bass': 29, 'Shatter': 30, 'Fireworks': 31, 'Tambourine': 32, 'Cowbell': 33, 'Electric_piano': 34, 'Meow': 35, 'Drawer_open_or_close': 36, 'Applause': 37, 'Acoustic_guitar': 38, 'Violin_or_fiddle': 39, 'Finger_snapping': 40}
 
         self.classes_frequency = {}
         self.classes_percent = {}
@@ -50,9 +51,6 @@ class DataLoader():
             self.verified.append(file_verified)
 
             self.files.append(file_name)
-
-            self.class_id_mapping.setdefault(
-                file_label, len(self.class_id_mapping.keys()))
             self.labels.append(self.class_id_mapping[file_label])
 
             self.classes_frequency[
@@ -139,7 +137,7 @@ class DataLoader():
                 files_of.add(self.files[index])
         return files_of
 
-    def get_next_spectrograms(self, version, how_much):
+    def get_next_spectrograms(self, version, how_many):
         file_per_class = {}
         loaded = 0
         labels = []
@@ -147,15 +145,16 @@ class DataLoader():
         spectrograms = []
         classes_percent = {}
         for key in self.classes_percent.keys():
-            classes_percent[self.class_id_mapping[key]] = self.classes_percent[key]
-        print("loading the next " + str(how_much) + " files...")
-        while(loaded < how_much):
+            classes_percent[self.class_id_mapping[
+                key]] = self.classes_percent[key]
+        print("loading the next " + str(how_many) + " files...")
+        while(loaded < how_many):
             for index in tqdm(range(len(self.files))):
                 if(self.files[index] in self.files_loaded):
                     continue
-                if(file_per_class.setdefault(self.labels[index], 0) > classes_percent[self.labels[index]] * how_much):
+                if(file_per_class.setdefault(self.labels[index], 0) > classes_percent[self.labels[index]] * how_many):
                     continue
-                if(loaded >= how_much):
+                if(loaded >= how_many):
                     break
                 spec = self.__load_spectrogram(self.files[index], version)
                 spec = DataManager.conform_dim(spec, self.dim_to_conform, 1)
@@ -168,29 +167,30 @@ class DataLoader():
                                                                                index], 0) + 1
 
             for key in file_per_class.keys():
-                if(file_per_class[key] < classes_percent[self.labels[index]] * how_much):
+                if(file_per_class[key] < classes_percent[self.labels[index]] * how_many):
                     files_to_free = self.__get_file_name_of(key)
                     self.files_loaded = self.files_loaded.difference(
                         files_to_free)
         print(len(spectrograms))
         return np.asarray(spectrograms, dtype=np.float32), np.asarray(labels, dtype=np.int32), verified
 
-    def get_next_audio_signals(self, how_much):
+    def get_next_audio_signals(self, how_many):
         file_per_class = {}
         loaded = 0
         labels = []
         audio_signals = []
         verified = []
         for key in self.classes_percent.keys():
-            classes_percent[self.class_id_mapping[key]] = self.classes_percent[key]
-        print("loading the next " + str(how_much) + " files...")
-        while(loaded < how_much):
+            classes_percent[self.class_id_mapping[
+                key]] = self.classes_percent[key]
+        print("loading the next " + str(how_many) + " files...")
+        while(loaded < how_many):
             for index in tqdm(range(len(self.files))):
                 if(self.files[index] in self.files_loaded):
                     continue
-                if(file_per_class.setdefault(self.labels[index], 0) > classes_percent[self.labels[index]] * how_much):
+                if(file_per_class.setdefault(self.labels[index], 0) > classes_percent[self.labels[index]] * how_many):
                     continue
-                if(loaded >= how_much):
+                if(loaded >= how_many):
                     break
                 signal = self.__load_audio_signal(self.files[index], version)
                 signal = DataManager.conform_dim(
@@ -204,7 +204,7 @@ class DataLoader():
                                                                                index], 0) + 1
 
             for key in file_per_class.keys():
-                if(file_per_class[key] < classes_percent[self.labels[index]] * how_much):
+                if(file_per_class[key] < classes_percent[self.labels[index]] * how_many):
                     files_to_free = self.__get_file_name_of(key)
                     self.files_loaded = self.files_loaded.difference(
                         files_to_free)

@@ -7,18 +7,20 @@ from tqdm import tqdm
 
 # ritorna un vettore di indici che sono quelli da scartare
 EPOCHS_PER_TRAIN_F = 3
-EPOCHS_PER_TRAIN_S = 5
+EPOCHS_PER_TRAIN_S = 20
 
 
-def self_verify(labels, verified, predict, class_stat, max_per_class, loaded_per_class, threshold):
+def self_verify(labels, verified, predict, class_stat, max_per_class, threshold):
     indeces = []
+    loaded_per_class = {}
     for index in tqdm(range(len(labels))):
         label = labels[index]
+        loaded_per_class.setdefault(label, 0)
         if(verified[index]):
             if(loaded_per_class[label] < max_per_class[label]):
                 loaded_per_class[label] += 1
                 continue
-        if(label == predict[index][0]):
+        if(label == predict[index][0]):#DA CAMBIARE
             if(abs(predict[index][1] - class_stat[label]['mean']) < threshold * class_stat[label]['std_dev']):
                 if(loaded_per_class[label] < max_per_class[label]):
                     loaded_per_class[label] += 1
@@ -66,13 +68,6 @@ def main(model_name, continue_train, sample_rate, spec_version, dimension_confor
         print()
         print()
 
-    self_verify_max_per_class = {}
-    loaded_per_class = {}
-    for key in classes_frequency.keys():
-        non_verified = classes_frequency[key] - classes_verified[key]
-        self_verify_max_per_class[class_id_mapping[key]] = classes_frequency[
-            key] - (30 * non_verified / 100)
-        loaded_per_class[class_id_mapping[key]] = 0
     # first train the model on the verified files
     X, Y = data_loader.load_verified_spectrograms(spec_version)
     files_used = len(Y)
@@ -94,16 +89,23 @@ def main(model_name, continue_train, sample_rate, spec_version, dimension_confor
             print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
             h = model.fit(data=Xt, labels=Y, model_name=model_name, learning_rate=first_phase_lp['lr'], batch_size=first_phase_lp[
                 'bs'], epochs=EPOCHS_PER_TRAIN_F, early_stop=early_stopping, validation_split=validation_split, verbose=v)
-            del Xt
             history['acc'].append(h.history['acc'])
             history['loss'].append(h.history['loss'])
             history['val_acc'].append(h.history['val_acc'])
             history['val_loss'].append(h.history['val_loss'])
+            del Xt
     del X
-    del Y
     print("finish the firt train")
     print("*****************************************************************")
     while(files_used < pass_dataset * sum(classes_frequency.values())):
+        self_verify_max_per_class = {}
+
+        for key in classes_percent.keys():
+            non_verified = (classes_percent[
+                            key] * num_for_each_train) - (classes_percent_verified[key] * num_for_each_train)
+            self_verify_max_per_class[class_id_mapping[key]] = (
+                classes_percent[key] * num_for_each_train) - (30 * non_verified / 100)
+
         # load the next num_for_each_train files
         X, Y, V = data_loader.get_next_spectrograms(
             spec_version, num_for_each_train)
@@ -119,8 +121,8 @@ def main(model_name, continue_train, sample_rate, spec_version, dimension_confor
             print()
         # discard some files
         print("self verify the unverified files...")
-        indeces, loaded_per_class = self_verify(Y, V, output_vec, class_dict,
-                                                self_verify_max_per_class, loaded_per_class, threshold)
+        indeces, _ = self_verify(Y, V, output_vec, class_dict,
+                              self_verify_max_per_class, threshold)
         print("removed " + str(len(indeces)) + " files")
         X = np.delete(X, indeces, axis=0)
         Y = np.delete(Y, indeces, axis=0)
@@ -137,13 +139,10 @@ def main(model_name, continue_train, sample_rate, spec_version, dimension_confor
             history['loss'].append(h.history['loss'])
             history['val_acc'].append(h.history['val_acc'])
             history['val_loss'].append(h.history['val_loss'])
+            del Xt
         files_used += num_for_each_train
+        threshold -= 1
         del X
-        del Y
-        del V
-        del indeces
-        del output_vec
-        del Xt
 
     print("finish the firt train")
     model.print_history(model_name=model_name, history=history)
@@ -170,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--nfa', help='number of frame to use to train', type=int, default=384)
     parser.add_argument(
-        '--th', help='threshold for self verifying a file', type=int, default=5)
+        '--th', help='init threshold for self verifying a file', type=int, default=10)
     parser.add_argument(
         '--nos', help='number of spectrograms for each train', type=int, default=3000)
     parser.add_argument(
@@ -184,9 +183,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--slr', help='learning rate for the second learning phase', type=float, default=0.0002)
     parser.add_argument(
-        '--se', help='ephocs for the second learning phase', type=int, default=50)
+        '--se', help='ephocs for the second learning phase', type=int, default=5)
     parser.add_argument(
-        '--pd', help='how many times use the dataset files to train', type=int, default=2)
+        '--pd', help='how many times use the dataset files to train', type=int, default=4)
     parser.add_argument(
         '--sbs', help='batch size for the second learning phase', type=int, default=64)
     parser.add_argument(

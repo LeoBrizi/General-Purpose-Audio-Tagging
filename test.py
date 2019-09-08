@@ -1,23 +1,43 @@
 from Loader import *
-from DataManager import *
 from CNNSpecNetwork import *
-import time
-from DataLoader import *
+import numpy as np
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score
+import argparse
+from tqdm import tqdm
 
-loader = Loader()
-loader.load_files_labels("./dataset/train.csv")
 
-spec, label = loader.load_spectrogram(version=1)
-print("---------------------------------------------------------------------------")
-print(loader.get_general_statistics())
-print("---------------------------------------------------------------------------")
-print(loader.get_spectrogram_statistics())
-spec = DataManager.conform_vector(spec, 1000, 1)
-spec = np.asarray(spec, dtype=np.float64)
+def main(model_name, spec_version=1):
+    loader = Loader()
+    loader.load_files_labels("./dataset/test_post_competition.csv")
+    print(loader.get_label_id_mapping())
+    spectrograms, label = loader.load_spectrogram(version=spec_version)
+    model = CNNSpecNetwork()
+    model.load_model(model_name)
+    print("Predict on test set...")
+    y_pred = []
+    for s in tqdm(spectrograms):
+        y = model.predict_single_data(s)
+        y_pred.append(y[0])
 
-print("---------------------------------------------")
-print(spec.shape)
-print("---------------------------------------------")
-print(label)
+    y_test_arr = np.array(label)
+    y_pred_arr = np.array(y_pred)
 
-time.sleep(10)
+    confusionMatrix = confusion_matrix(y_test_arr, y_pred_arr)
+
+    print('Accuracy:')
+    print(accuracy_score(y_test_arr, y_pred_arr))
+    print('Precision:')
+    print(precision_score(y_test_arr, y_pred_arr, average=None))
+    print('Recall:')
+    print(recall_score(y_test_arr, y_pred_arr, average=None))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description="Train the convolutional neural network ")
+    parser.add_argument('--model_name', help='name of the model.')
+    parser.add_argument(
+        '--sv', help='spectrogram version used to train the network', type=int, default=1)
+    args = parser.parse_args()
+
+    main(model_name=args.model_name, spec_version=args.sv)

@@ -95,8 +95,8 @@ class Preprocessor():
 
         if self.dump:
             # save spectrograms
-            if not os.path.exists(spectrogram_path):
-                os.makedirs(spectrogram_path)
+            if not os.path.exists(self.spectrogram_path):
+                os.makedirs(self.spectrogram_path)
             spec_file = os.path.join(self.spectrogram_path, file_name)
             np.save(spec_file, spectrogram)
 
