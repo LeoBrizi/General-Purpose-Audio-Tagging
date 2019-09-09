@@ -6,7 +6,7 @@ import tensorflow.keras.optimizers as KO
 import tensorflow.keras.models as KM
 import tensorflow.keras.utils as KU
 import tensorflow.keras.callbacks as KC
-import tensorflow.compat.v1.keras.initializers as KI
+import tensorflow.keras.initializers as KI
 import tensorflow.keras.activations as KA
 from tqdm import tqdm
 import os
@@ -139,7 +139,7 @@ class CNNSpecNetwork():
 
         learning_rate_callback = KC.LearningRateScheduler(scheduler)
         callbacks.append(learning_rate_callback)
-		'''
+        '''
         logdir = "Models/" + model_name + "/" + datetime.now().strftime("%Y%m%d-%H%M%S")
         if not os.path.exists(logdir):
             os.makedirs(logdir)
@@ -195,7 +195,6 @@ class CNNSpecNetwork():
         plt.savefig("Models/" + model_name + "_loss.png")
         plt.show()
 
-
     def save_history(self, model_name, history):
         import json
         jsond = json.dumps(str(history))
@@ -231,3 +230,39 @@ class CNNSpecNetwork():
             class_dict[key]['std_dev'] = np.sqrt(class_dict[key]['std_dev'])
 
         return output_vec, class_dict, how_many_per_class
+
+    def predict_single_data_v2(self, data):
+        start = 0
+        outputs = []
+        while(start + self.n_frames <= data.shape[1]):
+            inp = np.expand_dims(data[:, start:start + self.n_frames], axis=0)
+            inp = np.expand_dims(inp, axis=3)
+            pred = self.model.predict(inp)
+            outputs.append(pred)
+            start += self.n_frames
+        res = np.zeros(self.num_of_classes)
+        for output in outputs:
+            res += np.squeeze(output)
+        res /= len(outputs)
+        return np.argmax(res), np.max(res), res
+
+    def compute_stat_v2(self, X_data, Y_label):
+        output_vec = []
+        class_dict = {}
+        how_many_per_class = {}
+        for index in tqdm(range(len(X_data))):
+            clas_pre, conf_pre, output = self.predict_single_data_v2(X_data[index])
+            clas = Y_label[index]
+            output_vec.append((clas_pre, conf_pre, output[clas]))
+            class_dict.setdefault(clas, {'mean': 0, 'variance': 0})
+            how_many_per_class[
+                clas] = how_many_per_class.setdefault(clas, 0) + 1
+            Xk = output[clas]
+            k = how_many_per_class[clas]
+            delta = (Xk - class_dict[clas]["mean"]) / k
+            class_dict[clas]["mean"] = class_dict[
+                clas]["mean"] + delta
+            class_dict[clas]["variance"] = ((
+                (k - 1) * class_dict[clas]["variance"]) / k) + (delta * (Xk - class_dict[clas]["mean"]))
+
+        return output_vec, class_dict

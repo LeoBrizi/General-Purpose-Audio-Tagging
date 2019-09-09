@@ -149,12 +149,14 @@ class DataLoader():
                 key]] = self.classes_percent[key]
         print("loading the next " + str(how_many) + " files...")
         while(loaded < how_many):
+            inex = 0
             for index in tqdm(range(len(self.files))):
                 if(self.files[index] in self.files_loaded):
                     continue
                 if(file_per_class.setdefault(self.labels[index], 0) > classes_percent[self.labels[index]] * how_many):
                     continue
                 if(loaded >= how_many):
+                    loaded += how_many
                     break
                 spec = self.__load_spectrogram(self.files[index], version)
                 spec = DataManager.conform_dim(spec, self.dim_to_conform, 1)
@@ -167,10 +169,10 @@ class DataLoader():
                                                                                index], 0) + 1
 
             for key in file_per_class.keys():
-                if(file_per_class[key] < classes_percent[self.labels[index]] * how_many):
+                if(file_per_class[key] <= (classes_percent[key] * how_many)):
                     files_to_free = self.__get_file_name_of(key)
-                    self.files_loaded = self.files_loaded.difference(
-                        files_to_free)
+                    self.files_loaded = self.files_loaded.difference(files_to_free)
+                    print(len(self.files_loaded))
         print(len(spectrograms))
         return np.asarray(spectrograms, dtype=np.float32), np.asarray(labels, dtype=np.int32), verified
 

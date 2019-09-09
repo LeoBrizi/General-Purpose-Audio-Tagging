@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 # ritorna un vettore di indici che sono quelli da scartare
 EPOCHS_PER_TRAIN_F = 3
-EPOCHS_PER_TRAIN_S = 20
+EPOCHS_PER_TRAIN_S = 18
 
 
 def self_verify(labels, verified, predict, class_stat, max_per_class, threshold):
@@ -20,13 +20,39 @@ def self_verify(labels, verified, predict, class_stat, max_per_class, threshold)
             if(loaded_per_class[label] < max_per_class[label]):
                 loaded_per_class[label] += 1
                 continue
-        if(label == predict[index][0]):#DA CAMBIARE
+        if(label == predict[index][0]):  # DA CAMBIARE
             if(abs(predict[index][1] - class_stat[label]['mean']) < threshold * class_stat[label]['std_dev']):
                 if(loaded_per_class[label] < max_per_class[label]):
                     loaded_per_class[label] += 1
                     continue
         indeces.append(index)
     return indeces, loaded_per_class
+
+
+def self_verify_v2(labels, class_stat, out_per_label, remove_per_class):
+
+    def log_likelihood(indeces):
+        values = []
+        for i in indeces:
+            out = out_per_label[i][2]
+            label = labels[i]
+            variance = class_stat[label]["variance"]
+            mean = class_stat[label]["mean"]
+            log_lk = (-1 / 2 * np.log(2 * np.pi)) - (1 / 2 *
+                                                     np.log(variance)) - (1 / (2 * variance)) * ((out - mean)**2)
+            values.append(abs(log_lk))
+        return np.array(values)
+    indeces = np.array([])  # index of the file to remove from the training set
+    Y = np.array(labels)
+    for c in class_stat.keys():
+        indeces_of_c = np.where(Y == c)[0]
+        predicate = log_likelihood(indeces_of_c)
+        order = np.argsort(predicate)
+        order_indeces = indeces_of_c[order]
+        many_to_remove = int(remove_per_class[c])
+        indeces = np.append(
+            indeces, order_indeces[-many_to_remove:], axis=0)
+    return indeces
 
 
 def main(model_name, continue_train, sample_rate, spec_version, dimension_conform, num_of_frame, threshold, pass_dataset,
@@ -67,12 +93,8 @@ def main(model_name, continue_train, sample_rate, spec_version, dimension_confor
         print(classes_percent_verified)
         print()
         print()
-
-    # first train the model on the verified files
-    X, Y = data_loader.load_verified_spectrograms(spec_version)
-    files_used = len(Y)
     #Y = KU.to_categorical(Y)
-
+    files_used = 0
     if(verbose):
         v = 2
     else:
@@ -81,6 +103,9 @@ def main(model_name, continue_train, sample_rate, spec_version, dimension_confor
     history = {'acc': [], 'loss': [], 'val_acc': [], 'val_loss': []}
     print("first train on only verified files")
     if(not continue_train):
+        # first train the model on the verified files
+        X, Y = data_loader.load_verified_spectrograms(spec_version)
+        files_used += len(Y)
         for epoch in range(first_phase_lp['e']):
             print("EPOCA: " + str(epoch) + " di " + str(first_phase_lp['e']))
             Xt = random_slice(X)
@@ -94,46 +119,53 @@ def main(model_name, continue_train, sample_rate, spec_version, dimension_confor
             history['val_acc'].append(h.history['val_acc'])
             history['val_loss'].append(h.history['val_loss'])
             del Xt
-    del X
+        del X
+
     print("finish the firt train")
     print("*****************************************************************")
     while(files_used < pass_dataset * sum(classes_frequency.values())):
-        self_verify_max_per_class = {}
+        remove_per_class = {}
 
         for key in classes_percent.keys():
-            non_verified = (classes_percent[
-                            key] * num_for_each_train) - (classes_percent_verified[key] * num_for_each_train)
-            self_verify_max_per_class[class_id_mapping[key]] = (
-                classes_percent[key] * num_for_each_train) - (30 * non_verified / 100)
+            non_verified = (classes_percent[key] * num_for_each_train) 
+            remove_per_class[class_id_mapping[key]] = np.ceil(20 * non_verified / 100)
 
         # load the next num_for_each_train files
         X, Y, V = data_loader.get_next_spectrograms(
             spec_version, num_for_each_train)
         # obtain model statistics
         print("computing stat of the model...")
-        output_vec, class_dict, how_many_per_class = model.compute_stat(X)
+        #output_vec, class_dict, how_many_per_class = model.compute_stat_v2(X)
+        output_vec, class_dict = model.compute_stat_v2(X, Y)
         if(verbose):
             print("ACTUAL MODEL STAT:")
             print(class_dict)
             print("--------------------------------------------------------------")
+            '''
             print("how many files per class classified:")
             print(how_many_per_class)
+            '''
             print()
         # discard some files
         print("self verify the unverified files...")
+        '''
         indeces, _ = self_verify(Y, V, output_vec, class_dict,
-                              self_verify_max_per_class, threshold)
+                                 remove_per_class, threshold) 
+                                 qua non era remove per class ma quanti prendere per class
+        '''
+        indeces = self_verify_v2(Y, class_dict, output_vec, remove_per_class)
         print("removed " + str(len(indeces)) + " files")
         X = np.delete(X, indeces, axis=0)
         Y = np.delete(Y, indeces, axis=0)
         print("dimension of the tensor for the training")
         print(X.shape)
         print("ready for the next train...")
+        del output_vec
         for epoch in range(second_phase_lp['e']):
             print("EPOCA: " + str(epoch) + " di " + str(second_phase_lp['e']))
             Xt = random_slice(X)
             Xt = np.expand_dims(Xt, axis=3)
-            model.fit(data=Xt, labels=Y, model_name=model_name, learning_rate=second_phase_lp['lr'], batch_size=second_phase_lp[
+            h = model.fit(data=Xt, labels=Y, model_name=model_name, learning_rate=second_phase_lp['lr'], batch_size=second_phase_lp[
                 'bs'], epochs=EPOCHS_PER_TRAIN_S, early_stop=early_stopping, validation_split=validation_split, verbose=v)
             history['acc'].append(h.history['acc'])
             history['loss'].append(h.history['loss'])
@@ -165,13 +197,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--sv', help='spectrogram version to compute (1 or 2).', type=int, default=1)
     parser.add_argument(
-        '--dtc', help='dimension to conform the spectrograms', type=int, default=3000)
+        '--dtc', help='dimension to conform the spectrograms', type=int, default=2000)
     parser.add_argument(
         '--nfa', help='number of frame to use to train', type=int, default=384)
     parser.add_argument(
         '--th', help='init threshold for self verifying a file', type=int, default=10)
     parser.add_argument(
-        '--nos', help='number of spectrograms for each train', type=int, default=3000)
+        '--nos', help='number of spectrograms for each train', type=int, default=2500)
     parser.add_argument(
         '--nfi', help='number of convolutional filters', type=int, default=48)
     parser.add_argument(
@@ -183,7 +215,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--slr', help='learning rate for the second learning phase', type=float, default=0.0002)
     parser.add_argument(
-        '--se', help='ephocs for the second learning phase', type=int, default=5)
+        '--se', help='ephocs for the second learning phase', type=int, default=12)
     parser.add_argument(
         '--pd', help='how many times use the dataset files to train', type=int, default=4)
     parser.add_argument(

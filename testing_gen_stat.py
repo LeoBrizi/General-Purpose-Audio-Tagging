@@ -29,26 +29,26 @@ def createMatrix(rowCount, colCount, dataList):
 
 
 def main(model_name, spec_version=1):
-    data = [[1, 2, 3], [4, 5, 6]]
+    #data = [[1, 2, 3], [4, 5, 6]]
 
-    x_header = data[0][1:]
-    y_header = [i for i in range(1, 13)]
-    data=data[1:]
-    for i in range(len(data)):
-        data[i] = data[i][1:]
-    arr = np.array(data)
-    fig, ax = plt.subplots()
-    norm = MidpointNormalize(midpoint=0)
-    im = ax.imshow(data, norm=norm, cmap=plt.cm.seismic, interpolation='none')
+    #x_header = data[0][1:]
+    #y_header = [i for i in range(1, 13)]
+    #data=data[1:]
+    #for i in range(len(data)):
+        #data[i] = data[i][1:]
+    #arr = np.array(data)
+    #fig, ax = plt.subplots()
+    #norm = MidpointNormalize(midpoint=0)
+    #im = ax.imshow(data, norm=norm, cmap=plt.cm.seismic, interpolation='none')
 
-    ax.set_xticks(np.arange(arr.shape[1]), minor=False)
-    ax.set_yticks(np.arange(arr.shape[0]), minor=False)
-    ax.xaxis.tick_top()
-    ax.set_xticklabels(x_header, rotation=90)
-    ax.set_yticklabels(y_header)
+    #ax.set_xticks(np.arange(arr.shape[1]), minor=False)
+    #ax.set_yticks(np.arange(arr.shape[0]), minor=False)
+    #ax.xaxis.tick_top()
+    #ax.set_xticklabels(x_header, rotation=90)
+    #ax.set_yticklabels(y_header)
 
-    fig.colorbar(im)
-    plt.show()
+    #fig.colorbar(im)
+    #plt.show()
 
     loader= Loader()
     loader.load_files_labels('./dataset/train.csv')
@@ -67,14 +67,14 @@ def main(model_name, spec_version=1):
     x = np.arange(len(k))
     plt.bar(x, height=v)
     plt.xticks(x, k)
-    #plt.xticks(x, labels, rotation='vertical')
+    plt.xticks(x, k, rotation='vertical')
     plt.show()
 
     res_two=res[1]                                                                          #res2
     labels = list(res_two.keys())
     sizes = list(res_two.values())
     fig1, ax1 = plt.subplots()
-    ax1.pie(sizes, labels=labels,shadow=True)
+    ax1.pie(sizes, labels=k,shadow=True)
     ax1.axis('equal')
     plt.show()
 
@@ -105,7 +105,7 @@ def main(model_name, spec_version=1):
     x = np.arange(len(k1))
     plt.bar(x, height=v1)
     plt.xticks(x, k1)
-    #plt.xticks(x, labels, rotation='vertical')
+    plt.xticks(x, k1, rotation='vertical')
     plt.show()
 
 
@@ -114,9 +114,12 @@ def main(model_name, spec_version=1):
     #print(res_six)
 
     labels1 = list(res_six.keys())
+    #print("?????????")
+    #print(labels1)
+    #print("?????????")
     sizes1 = list(res_six.values())
     fig1, ax1 = plt.subplots()
-    ax1.pie(sizes1, labels=labels1,shadow=True)
+    ax1.pie(sizes1, labels=k1,shadow=True)
     ax1.axis('equal')
     plt.show()
 
