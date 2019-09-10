@@ -125,3 +125,8 @@ dmypy.json
 #data set directory
 dataset/
 
+#network model directory
+Models/
+
+test/
+
