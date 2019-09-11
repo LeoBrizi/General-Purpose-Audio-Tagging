@@ -51,5 +51,9 @@ fi
 if[ $dowloadModels ]
 then
 	echo "dowload pretrained models..."
-	
+	wget "https://drive.google.com/uc?export=download&id=1rluJbQVEFLRjxHqcM75M1WT29-dFw1Cq"
+	mkdir -p ./Models/test9
+	mv test9.h5 ./Models/test9/
+	echo "dowload finished"
+	echo "to test the trained model lauch test.py --model_name test9"
 fi
