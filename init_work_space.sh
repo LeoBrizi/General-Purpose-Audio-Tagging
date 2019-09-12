@@ -55,7 +55,7 @@ then
 	echo "dowload pretrained model..."
 	wget "https://drive.google.com/uc?export=download&id=1rluJbQVEFLRjxHqcM75M1WT29-dFw1Cq"
 	mkdir -p ./Models/test9
-	mv test9.h5 ./Models/test9/
+	mv "uc?export=download&id=1rluJbQVEFLRjxHqcM75M1WT29-dFw1Cq" ./Models/test9/test9.h5
 	echo "dowload finished"
 	echo "to test the trained model lauch test.py --model_name test9"
 fi
