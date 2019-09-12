@@ -3,19 +3,22 @@
 helpFunction()
 {
    echo "script to initialize the workspace"
-   echo "Usage: $0 [-d data_set_zip_file]"
+   echo "Usage: $0 [-d data_set_zip_file] [-m]"
    echo -e "\t-d to unzip the dataset in the dataset directory"
-   echo -e "\t-m to dowload pretrained models"
+   echo -e "\t-m to dowload pretrained model"
+   echo -e "\t-h to print the usage of this script"
    exit 1 # Exit script after printing help
 }
+dowloadModels=false
 
-while getopts "d:m:" opt
-do
-   case "$opt" in
-      d ) dataSetZipFile="$OPTARG" ;;
-	  m ) dowloadModels=true ;;
-      ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
-   esac
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -d) dataSetZipFile="$2"; shift 2;;
+    -m) dowloadModels=true; shift 1;;
+	-h) helpFunction;;
+    -*) echo "unknown option: $1" >&2;helpFunction;;
+    *) handle_argument "$1"; shift 1;;
+  esac
 done
 
 modelDir=./Models/
@@ -45,12 +48,11 @@ then
 	unzip "$dataSetDir/$trainZipFile" -d $dataSetDir
 	echo "unziping finished."
 else
-	echo "put the data set inside $dataSetDir"
+	echo "PUT THE DATA SET INSIDE dataset directory"
 fi
-
-if[ $dowloadModels ]
+if [ "$dowloadModels" == "true" ]
 then
-	echo "dowload pretrained models..."
+	echo "dowload pretrained model..."
 	wget "https://drive.google.com/uc?export=download&id=1rluJbQVEFLRjxHqcM75M1WT29-dFw1Cq"
 	mkdir -p ./Models/test9
 	mv test9.h5 ./Models/test9/
