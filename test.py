@@ -69,7 +69,8 @@ def main(model_name, spec_version=1):
     model.load_model(model_name)
     loader = DataLoader()
     loader.load_files_labels("./dataset/test_post_competition.csv")
-    print(loader.get_label_id_mapping())
+    diz_mapping = loader.get_label_id_mapping()
+    print(diz_mapping)
     spectrograms, label = loader.load_verified_spectrograms(version=spec_version)
     print("Predict on test set...")
     y_pred = []
@@ -81,8 +82,10 @@ def main(model_name, spec_version=1):
     y_pred_arr = np.array(y_pred)
 
     confusionMatrix = confusion_matrix(y_test_arr, y_pred_arr)
-    a=[str(i) for i in range(1,42)]
-    plot_confusion_matrix(y_test_arr, y_pred_arr, classes=a,
+    classes=[]
+    for k in diz_mapping:
+        classes.insert(diz_mapping[k], k)
+    plot_confusion_matrix(y_test_arr, y_pred_arr, classes=classes,
                       title='Confusion matrix, without normalization')
     plt.show()
     print('Accuracy:')
